@@ -1,0 +1,32 @@
+body {
+  background: #282c34;
+  color: #fff;
+}
+a {
+  color: #fff;
+  text-decoration: underline;
+}
+table {
+  width: 800px;
+  padding: 10px;
+}
+
+.success {
+  background-color: green;
+  color: white;
+  padding: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  width: 80%;
+  margin: 25px;
+}
+
+.alert {
+  background-color: red;
+  color: white;
+  padding: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  width: 80%;
+  margin: 25px;
+}

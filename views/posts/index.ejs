@@ -1,0 +1,26 @@
+<h3>Posts count: <%= posts.length %></h3>
+
+<table>
+  <tr>
+    <td>ID</td>
+    <td>Title</td>
+    <td>Content</td>
+    <td></td>
+  </tr>
+
+  <% posts.forEach((post) => { %>
+    <tr>
+      <td><%= post.id %></td>
+      <td><%= post.title %></td>
+      <td><%= post.content %></td>
+      <td><a href="/post/<%= post.id %>">View Post</a></td>
+      <td><a href="/post/edit/<%= post.id %>">Edit Post</a></td>
+      <td><a href="/post/destroy/<%= post.id %>">Delete Post</a></td>
+    </tr>
+  <% }) %>
+</table>
+
+<hr /> 
+<br>
+
+<%- include('_form') %>

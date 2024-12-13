@@ -1,0 +1,12 @@
+<form method="POST" action="/posts">
+    <label>
+      Title <input type="text" name="title" placeholder="<%= post.title %>"/>
+    </label>
+    <br />
+    <label>
+      Content<br />
+      <textarea name="content" placeholder="<%= post.content %>"></textarea>
+    </label>
+    <br />
+    <input type="submit" value="Update post <%= post.id %>" />
+</form>
