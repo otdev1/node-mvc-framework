@@ -8,7 +8,7 @@ window.onload = () =>
     } 
 }
 
-async function remove(element)
+async function deletePost(element)
 {
     const postId = element.value;
 
