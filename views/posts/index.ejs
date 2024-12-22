@@ -15,12 +15,12 @@
       <td><%= post.content %></td>
       <td><a href="/post/<%= post.id %>">View Post</a></td>
       <td><a href="/post/edit/<%= post.id %>">Edit Post</a></td>
-      <td><a href="/post/destroy/<%= post.id %>">Delete Post</a></td>
+      <td><button type="button" value="<%= post.id %>" onclick="remove(this)">Delete Post</button></td>
     </tr>
   <% }) %>
 </table>
 
-<hr /> 
+<hr />
 <br>
 
 <%- include('_form') %>
