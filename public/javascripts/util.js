@@ -2,7 +2,7 @@ let baseurl = window.location.origin;
 
 window.onload = () =>
 {
-    if (window.location.href === "http://localhost:4001/posts")
+    if (window.location.href === baseurl+'/posts')
     {
         document.getElementById("target").remove();
     } 
