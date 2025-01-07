@@ -1,18 +1,22 @@
 import Framework from './src/Framework.js';
-import Router from './src/Router.js';
 
-const router = new Router();
+import StaticRouter from './src/StaticRouter.js';
 
-router.get('/', 'HomeController#index');
-router.get('/posts', 'PostsController#index');
-router.get('/post/:id', 'PostsController#show');
-router.post('/posts', 'PostsController#create');
-router.get('/post/edit/:id', 'PostsController#editView');
+StaticRouter.get('/', 'HomeController#index');
 
-router.put('/posts/:id', 'PostsController#edit');
-router.delete('/post/destroy/:id', 'PostsController#destroy');
+StaticRouter.get('/posts', 'PostsController#index');
 
-const myFramework = new Framework(router);
+StaticRouter.get('/post/:id', 'PostsController#show');
+
+StaticRouter.post('/posts', 'PostsController#create');
+
+StaticRouter.get('/post/edit/:id', 'PostsController#editView');
+
+StaticRouter.post('/posts/:id', 'PostsController#edit');
+
+StaticRouter.delete('/post/destroy/:id', 'PostsController#destroy');
+
+const myFramework = new Framework(StaticRouter);
 
 myFramework.static(['stylesheets', 'images', 'javascripts']);
 
