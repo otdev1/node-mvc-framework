@@ -1,11 +1,20 @@
 let baseurl = window.location.origin; 
 
-window.onload = () =>
+window.onload = () => 
 {
-    if (window.location.href === baseurl+'/posts')
-    {
+    if (window.location.href === "http://localhost:4001/posts")
+    {   
         document.getElementById("target").remove();
     } 
+}
+
+function func(element)
+{
+    const postId = element.value;
+
+    alert(baseurl+'/post/destroy/'+postId); 
+    
+    return false;
 }
 
 async function deletePost(element)
@@ -14,22 +23,31 @@ async function deletePost(element)
 
     const url = baseurl+'/post/destroy/'+postId;
 
-    const options = {
-    method: 'DELETE'
-    };
+    const options = {method: 'DELETE'};
 
-    try 
+    if(confirm("Are you sure you want to delete this post?"))
     {
-        const response = await fetch(url, options);
-        if (!response.ok) 
+        try 
         {
-            throw new Error('Network response was not ok');
-        }
+            const response = await fetch(url, options);
 
-        console.log(response);
-    } 
-    catch (error) 
-    {
-        console.error('There was a problem with the DELETE request:', error.message);
+            if (!response.ok) 
+            {
+                if (response.redirected)
+                {
+                    location.reload();
+                }
+                else
+                {
+                    throw new Error('Network response was not ok');
+                }
+            }
+
+            console.log(response);
+        } 
+        catch (error) 
+        {
+            console.error('There was a problem with the DELETE request:', error.message);
+        }
     }
 }
