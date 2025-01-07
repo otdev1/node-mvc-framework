@@ -1,27 +1,53 @@
+import { title } from 'node:process';
 import { Attributes, Validators, Client } from './ModelHelpers.js';
 
+import { EOL } from "node:os"; //node platform-sepecific newline constant https://stackoverflow.com/a/14063413
+
+
 class Base {
-  #tableName
-  #persisted
-  #beforeSaveHooks
-  #afterSaveHooks
-  #validationHooks
-  #attributes
-  #changedAttributes
+  #tableName;
+  #persisted;
+  #beforeSaveHooks;
+  #afterSaveHooks;
+  #validationHooks;
+  #attributes;
+  #changedAttributes;
+  #ref;
+  #where;
+  #limit;
+  #offset;
+  #orderBy;
 
   constructor(attrs = {}) {
+    
     this.#tableName = this.constructor.name.toLowerCase() + "s";
-
+    
     this.#persisted = false;
+    
     this.#beforeSaveHooks = [];
+    
     this.#afterSaveHooks = [];
+    
     this.#validationHooks = [];
+    
     this.#attributes = {};
+    
     this.#changedAttributes = [];
+    
+    this.#ref = null;
+    
+    this.#where = [];
+    
+    this.#limit = null;
+    
+    this.#offset = null;
+    
+    this.#orderBy = null;
+    
     this.errors = [];
 
     this.#attributes.id = { type: Attributes.Primary, value: null };
-
+  
     this.#attributes['createdAt'] = { type: Attributes.DateTime, value: null };
     
     this.#attributes['updatedAt'] = { type: Attributes.DateTime, value: null };
@@ -29,24 +55,16 @@ class Base {
     this.id = null;
     
     this.createdAt = null;
+
     this.updatedAt = null;
-
-    this._ref = null;
-    this._where = [];
-    this._limit = null;
-    this._offset = null;
-    this._orderBy = null;
-
 
     this.setup();
 
-    // setup mass attributes if present
     if (Object.keys(attrs).length > 0 && attrs.constructor === Object) {
       this.#setMassAttributes(attrs);
     }
   }
 
-  /* STATIC METHODS */
   static async find(id) {
     const obj = new this;
     return await obj.#find(id);
@@ -61,7 +79,7 @@ class Base {
     const obj = new this;
     return await obj.first();
   }
-
+  
   static async last() {
     const obj = new this;
     return await obj.last();
@@ -72,7 +90,7 @@ class Base {
       let results = [];
 
       const res = await Client.query(`SELECT * FROM ${new this().#tableName} LIMIT 100;`);
-
+      
       res.rows.forEach((row) => {
         let obj = new this();
         obj.#setMassAttributes(row);
@@ -96,19 +114,25 @@ class Base {
   { 
     return new this().ref(this).limit(amount); 
   }
+  
   static offset(amount) { return new this().ref(this).offset(amount); }
+  
   static orderBy(order) { return new this().ref(this).orderBy(order); }
+  
   static where(conditions, args) { return new this().ref(this).where(conditions, args); }
 
-  setup() { }
+  setup() {}
 
-  /* PUBLIC METHODS */
   setAttribute(attribute, type) {
+    
     this.#attributes[attribute] = { type: type, value: null };
+    
     this[attribute] = null; 
+  
   }
 
   validate(attribute, validator) { 
+    
     this.#validationHooks.push({
       attribute: attribute,
       validator: validator
@@ -137,15 +161,21 @@ class Base {
 
     query += whereQuery[0];
   
-    if (this._orderBy)
-      query += ` ORDER BY ${this._orderBy}`;
+    if (this.#orderBy)
+    {
+      query += ` ORDER BY ${this.#orderBy}`;
+    }
 
-    if (this._limit)
-      query += ` LIMIT ${this._limit}`;
-
-    if (this._offset)
-      query += ` OFFSET ${this._offset}`;
-  
+    if (this.#limit)
+    {
+      query += ` LIMIT ${this.#limit}`;
+    }
+    
+    if (this.#offset)
+    {
+      query += ` OFFSET ${this.#offset}`;
+    }
+    
     query += ';';
   
     try {
@@ -154,21 +184,29 @@ class Base {
       const res = await Client.query(query, whereQuery[1]);
 
       res.rows.forEach((row) => {
-        let obj = new this._ref();
+
+        let obj = new this.#ref();
+        
         obj.#setMassAttributes(row);
+        
         obj.#persisted = true;
+        
         results.push(obj);
       });
   
       return results;
-    } catch (err) {
+    } 
+    catch (err) {
       throw new Error(err);
     }
   }
 
   async save() {
+    
     this.#reloadAttributes();
+    
     this.#runBeforeSaveHooks();
+    
     this.#checkValidations();
   
     if (this.errors.length > 0) {
@@ -176,9 +214,11 @@ class Base {
     } 
     else 
     {
+      
       let result = this.#persisted ? await this.#update() : await this.#insert();
+      
       this.#runAfterSaveHooks();
-
+      
       return result;
     }
   }  
@@ -186,262 +226,273 @@ class Base {
   async destroy() {
     return await this.#destroy();
   }
-
-  ref(obj) { this._ref = obj; return this; }
+  
+  ref(obj) { this.#ref = obj; return this; }
 
   limit(amount) {
-    this._limit = amount;
+    this.#limit = amount;
     return this;
   }
 
   offset(amount) {
-    this._offset = amount;
+    this.#offset = amount;
     return this;
   }
 
   orderBy(order) {
-    this._orderBy = order;
-
+    this.#orderBy = order;
     return this;
   }
 
   where(conditions, args) {
     if (typeof(conditions) === "string")
     {
-      this._where.push({ conditions: conditions, args: typeof(args) === "string" ? [args] : args });
+      this.#where.push({ conditions: conditions, args: typeof(args) === "string" ? [args] : args });
     }
-    else {
-      let pointer = this._where.map((w) => w.args.length).reduce((a, c) => a + c, 0) + 1;
+    else 
+    {
+      let pointer = this.#where.map((w) => w.args.length).reduce((a, c) => a + c, 0) + 1;
 
       for (let cond in conditions) {
         let args = conditions[cond];
-        this._where.push({ conditions: `${cond} = $${pointer++}`, args: typeof(args) === "string" ? [args] : args });
-
+        this.#where.push({ conditions: `${cond} = $${pointer++}`, args: typeof(args) === "string" ? [args] : args });
       }
-      
     }
 
     return this;
   }
 
-  /* PRIVATE METHODS */
-  #setMassAttributes(attrs) {
-    for (let attr in attrs) {
-      
-      if( attr == 'createdat')
-      { 
-        this.createdAt = attrs[attr];
-
-        this.#attributes.createdAt.value = attrs[attr];
-      }
-      
-      if( attr == 'updatedat')
-      { 
-        this.updatedAt = attrs[attr] 
-
-        this.#attributes.updatedAt.value = attrs[attr];
-      }
-
-      if (this.#attributes[attr]) {
-        this[attr] = attrs[attr];
-        this.#attributes[attr].value = attrs[attr];
-      }
-    }
-
+  getAttributesArray(attribute)
+  {
+    return this.#attributes[attribute].value;
   }
 
-  #reloadAttributes() {
-    for (let attribute in this.#attributes) {
-      if (this.#attributes[attribute].value != this[attribute] && !this.#changedAttributes.includes(attribute)) 
-      {
-        this.#changedAttributes.push(attribute);
-      }
-      this.#attributes[attribute].value = this[attribute];
-    }
+}
 
-  }
+#setMassAttributes(attrs) {
+  for (let attr in attrs) {
+   
+    if( attr == 'createdat')
+    { 
+      this.createdAt = attrs[attr];
 
-  #runBeforeSaveHooks() {
-    this.#beforeSaveHooks.forEach((m) => {
-     
-      this[m]();
-
-      this.#reloadAttributes();
-
-    });
-
-    return this;
-  }
-  
-  #runAfterSaveHooks() {
-    this.#afterSaveHooks.forEach((m) => {
-
-      this[m]();
-    });
-
-    return this;
-  }
-
-  #checkValidations() {
-    this.#validationHooks.forEach((hook) => {
-      if (Array.isArray(hook.validator)) {
-        hook.validator.forEach((deepHook) => {
-          if (typeof (deepHook) == "string") {
-            this[deepHook]();
-          } else {
-            deepHook(v.attribute, this);
-          }
-        })
-      } else if (typeof (hook.validator) == "string") {
-        this[hook.validator]();
-      } else {
-        hook.validator(hook.attribute, this);
-      }
-    });
-  }
-
-  /* Create, Update and Destroy */
-  async #insert() {
-    this.#attributes['createdAt'].value = 'NOW()';
-    this.#attributes['updatedAt'].value = 'NOW()';
-
-    let queryConstructors = {insertFields: [], pointers: [], valueFields: [], returnFields: []};
-
-    let pointer = 1;
-    for (let attrName in this.#attributes) {
-      if (attrName === "id") {
-
-        queryConstructors.returnFields.push(`${attrName}`);
-      } 
-      else {
-        queryConstructors.insertFields.push(`${attrName}`);
-        queryConstructors.pointers.push(`$${pointer++}`);
-        queryConstructors.valueFields.push(this.#attributes[attrName].value);
-        queryConstructors.returnFields.push(`${attrName}`);
-      }
-    }
-
-    let query = `INSERT INTO ${this.#tableName} (${queryConstructors.insertFields.join(', ')}) VALUES 
-    (${queryConstructors.pointers.join(', ')}) RETURNING ${queryConstructors.returnFields.join(', ')};`;
-
-    try {
-      let result = await Client.query(query, queryConstructors.valueFields);
-
-      this.#setMassAttributes(result.rows[0]);
-
-      this.#persisted = true;
-      this.#changedAttributes = [];
-      return true;
-    } catch (err) {
-      console.log('SQL ERROR', err);
-      return false;
-    }
-  }
-
-  async #update() {
-    this.#attributes['updatedAt'].value = 'NOW()';
-
-    this.#changedAttributes.push('updatedAt');
-  
-    let queryConstructors = { updateFields: [], valueFields: [], returnFields: [] };
-  
-    let pointer = 1;
-
-    for (let attrName of this.#changedAttributes) {
-      if (attrName === "id") {continue;}
-      queryConstructors.updateFields.push(`${attrName} = $${pointer++}`);
-      queryConstructors.valueFields.push(this.#attributes[attrName].value);
-      queryConstructors.returnFields.push(`${attrName}`);
+      this.#attributes.createdAt.value = attrs[attr];
     }
     
-    queryConstructors.valueFields.push(this.id);
+    if( attr == 'updatedat')
+    { 
+      this.updatedAt = attrs[attr] 
 
-    let query = `UPDATE ${this.#tableName} SET ${queryConstructors.updateFields.join(', ')} WHERE 
-    ${this.#tableName}.id = $${pointer} RETURNING ${queryConstructors.returnFields.join(', ')};`;
+      this.#attributes.updatedAt.value = attrs[attr];
+    }
+
+    if (this.#attributes[attr]) {
+      this[attr] = attrs[attr];
+      this.#attributes[attr].value = attrs[attr];
+    }
+  }
+}
+
+#reloadAttributes() {
+  for (let attribute in this.#attributes) {
+    if (this.#attributes[attribute].value != this[attribute] && !this.#changedAttributes.includes(attribute)) 
+    {
+      this.#changedAttributes.push(attribute);
+    }
+    this.#attributes[attribute].value = this[attribute];
+  }
+}
+
+#runBeforeSaveHooks() {
+  this.#beforeSaveHooks.forEach((m) => {
+
+    this[m]();
+
+    this.#reloadAttributes();
+  });
+
+  return this;
+}
+
+#runAfterSaveHooks() {
+  this.#afterSaveHooks.forEach((m) => {
+    this[m]();
+  });
+
+  return this;
+}
+
+#checkValidations() {
+  this.#validationHooks.forEach((hook) => {
+    if (Array.isArray(hook.validator)) {
+      hook.validator.forEach((deepHook) => {
+        if (typeof (deepHook) == "string") {
+          this[deepHook]();
+        } else {
+          deepHook(v.attribute, this);
+        }
+      })
+    } else if (typeof (hook.validator) == "string") {
+      this[hook.validator]();
+    } else {
+      hook.validator(hook.attribute, this);
+    }
+  });
+}
+
+async #insert() {
   
+  this.#attributes['createdAt'].value = 'NOW()';
+
+  this.#attributes['updatedAt'].value = 'NOW()';
+
+  let queryConstructors = {insertFields: [], pointers: [], valueFields: [], returnFields: []};
+
+  let pointer = 1;
+  for (let attrName in this.#attributes) {
+    if (attrName === "id") {
+
+      queryConstructors.returnFields.push(`${attrName}`);
+    } 
+    else {
+      queryConstructors.insertFields.push(`${attrName}`);
+      
+      queryConstructors.pointers.push(`$${pointer++}`);
+      
+      queryConstructors.valueFields.push(this.#attributes[attrName].value);
+      
+      queryConstructors.returnFields.push(`${attrName}`);
+    }
+  }
+
+  let query = `INSERT INTO ${this.#tableName} (${queryConstructors.insertFields.join(', ')}) VALUES 
+  (${queryConstructors.pointers.join(', ')}) RETURNING ${queryConstructors.returnFields.join(', ')};`;
+
+  try {
+    let result = await Client.query(query, queryConstructors.valueFields);
+
+    this.#setMassAttributes(result.rows[0]);
+
+    this.#persisted = true;
+    
+    this.#changedAttributes = [];
+    
+    return true;
+    
+  } catch (err) {
+    console.log('SQL ERROR', err);
+    return false;
+  }
+}
+
+async #update() {
+  this.#attributes['updatedAt'].value = 'NOW()';
+
+  this.#changedAttributes.push('updatedAt');
+
+  let queryConstructors = { updateFields: [], valueFields: [], returnFields: [] };
+
+  let pointer = 1;
+
+  for (let attrName of this.#changedAttributes) {
+    if (attrName === "id") {continue;}
+    
+    queryConstructors.updateFields.push(`${attrName} = $${pointer++}`);
+    
+    queryConstructors.valueFields.push(this.#attributes[attrName].value);
+    
+    queryConstructors.returnFields.push(`${attrName}`);
+
+  }
+  
+  queryConstructors.valueFields.push(this.id); 
+
+  let query = `UPDATE ${this.#tableName} SET ${queryConstructors.updateFields.join(', ')} WHERE 
+  ${this.#tableName}.id = $${pointer} RETURNING ${queryConstructors.returnFields.join(', ')};`;
+
+  try {
+    let result = await Client.query(query, queryConstructors.valueFields);
+
+    this.#setMassAttributes(result.rows[0]);
+
+    this.#changedAttributes = [];
+    return true;
+  } catch (err) {
+    console.log('SQL ERROR', err);
+    return false;
+  }
+}
+
+async #destroy() {
+  if (this.#persisted) {
     try {
-      let result = await Client.query(query, queryConstructors.valueFields);
+      let query = `DELETE FROM ${this.#tableName} WHERE id = $1;`;
 
-      this.#setMassAttributes(result.rows[0]);
+      await Client.query(query, [this.id]);
 
+      for (let attr in this.#attributes) {
+        this[attr] = null;
+        this.#attributes[attr].value = null;
+      }
       this.#changedAttributes = [];
+
       return true;
     } catch (err) {
       console.log('SQL ERROR', err);
       return false;
     }
+  } 
+  else {
+    return false;
   }
+}
 
-  async #destroy() {
-    if (this.#persisted) {
-      try {
-        let query = `DELETE FROM ${this.#tableName} WHERE id = $1;`;
+async #find(id) {
+  return await this.__get(`SELECT * FROM ${this.#tableName} WHERE id = $1 LIMIT 1;`, [id]);
+}
 
-        await Client.query(query, [this.id]);
-  
-        for (let attr in this.#attributes) {
-          this[attr] = null;
-          this.#attributes[attr].value = null;
-        }
-        this.#changedAttributes = [];
-  
-        return true;
-      } catch (err) {
-        console.log('SQL ERROR', err);
-        return false;
-      }
-    } 
-    else {
-      return false;
-    }
-  }
+async first() {
+  let whereQuery = this.#whereQuery();
+  return await this.__get(`SELECT * FROM ${this.#tableName}${whereQuery[0]} ORDER BY id ASC LIMIT 1;`, whereQuery[1]);
+}
 
-  async #find(id) {
-    return await this.__get(`SELECT * FROM ${this.#tableName} WHERE id = $1 LIMIT 1;`, [id]);
-  }
- 
-  async first() {
-    let whereQuery = this.#whereQuery();
-    return await this.__get(`SELECT * FROM ${this.#tableName}${whereQuery[0]} ORDER BY id ASC LIMIT 1;`, whereQuery[1]);
-  }
- 
-  async last() {
-    let whereQuery = this.#whereQuery();
-    return await this.__get(`SELECT * FROM ${this.#tableName}${whereQuery[0]} ORDER BY id DESC LIMIT 1;`, whereQuery[1]);
-  }
- 
-  #whereQuery() {
+async last() {
+  let whereQuery = this.#whereQuery();
+  return await this.__get(`SELECT * FROM ${this.#tableName}${whereQuery[0]} ORDER BY id DESC LIMIT 1;`, whereQuery[1]);
+}
 
-    let args = [];
+#whereQuery() {
 
-    if (this._where.length > 0) {
+  let args = [];
 
-      let where = [];
-
-      this._where.forEach((_where) => {
-        where.push(_where.conditions);
-        args = args.concat(_where.args);
-      });
-
-      return [` WHERE ${where.join(' AND ')}`, args];
-
-    } else {
-
-      return ['', []];
-    }
-  }
-
-  async __get(query, args)
+  if (this.#where.length > 0)
   {
-    try {
-      const res = await Client.query(query, args);
-      this.#setMassAttributes(res.rows[0]);
-      this.#persisted = true;
-      return this;
-    } catch (err) {
-      throw new Error(err);
-    }
+    let where = [];
+
+    this.#where.forEach((where) => {
+      where.push(where.conditions);
+      args = args.concat(where.args);
+    });
+
+    return [` WHERE ${where.join(' AND ')}`, args];
+
+  } else {
+
+    return ['', []];
   }
+}
+
+async __get(query, args)
+{
+  try {
+    const res = await Client.query(query, args);
+    this.#setMassAttributes(res.rows[0]);
+    this.#persisted = true;
+    return this;
+  } catch (err) {
+    throw new Error(err);
+  }
+}
 
 }
 
