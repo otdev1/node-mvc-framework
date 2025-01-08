@@ -8,15 +8,6 @@ window.onload = () =>
     } 
 }
 
-function func(element)
-{
-    const postId = element.value;
-
-    alert(baseurl+'/post/destroy/'+postId); 
-    
-    return false;
-}
-
 async function deletePost(element)
 {
     const postId = element.value;
