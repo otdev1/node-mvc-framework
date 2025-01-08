@@ -34,7 +34,6 @@ async function deletePost(element)
                 }
             }
 
-            console.log(response);
         } 
         catch (error) 
         {
